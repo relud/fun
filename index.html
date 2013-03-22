@@ -193,15 +193,15 @@
                     map.ground[0][x] = {};
                     for (y = 0; y < 100; y++) {
                         if (x == 0 || x == 99 || y == 0 || y == 99) {
-                            map.ground[0][x][y] = newTile("black.png", x, y, 0, false);
+                            map.ground[0][x][y] = newTile("images/black.png", x, y, 0, false);
                         } else {
                             var p = Math.random();
                             if (0 <= p && p < 0.8 ) {
-                                map.ground[0][x][y] = newTile("grass0.png", x, y, 0);
+                                map.ground[0][x][y] = newTile("images/grass0.png", x, y, 0);
                             } else if (0.8 <= p && p < 0.9) {
-                                map.ground[0][x][y] = newTile("grass1.png", x, y, 0);
+                                map.ground[0][x][y] = newTile("images/grass1.png", x, y, 0);
                             } else if (0.9 <= p && p <= 1) {
-                                map.ground[0][x][y] = newTile("tree0.png", x, y, 0, false);
+                                map.ground[0][x][y] = newTile("images/tree0.png", x, y, 0, false);
                             }
                         }
                     }
@@ -272,10 +272,10 @@
                     sprite.z = z;
                 };
 
-                var hero = newSprite("hero.png", 50, 50, 0, false, map);
+                var hero = newSprite("images/hero.png", 50, 50, 0, false, map);
                 map.focus = hero;
 
-                var goblin = newSprite("goblin.png", 58, 58, 0, false, map);
+                var goblin = newSprite("images/goblin.png", 58, 58, 0, false, map);
 
                 return map;
             }
