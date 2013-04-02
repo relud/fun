@@ -49,13 +49,14 @@ var passable = function(x, y, z) {
     }
     if (sprites) {
         var p = true;
-        sprites.forEach(function(sprite) {
-            if (sprite) {
-                if (!sprite.passable) {
+        var i;
+        for (i = 0; i < sprites.length; i++) {
+            if (sprites[i]) {
+                if (!sprites[i].passable) {
                     p = false;
                 }
             }
-        });
+        }
         if (!p) {
             return false;
         }
@@ -144,8 +145,8 @@ var render = function() {
     yMax = Math.round(map.focus.y + 1 + (canvas.height / 2 / 32));
     yMin = Math.round(map.focus.y - 1 - (canvas.height / 2 / 32));
 
-    map.ground.forEach(function(layer, l) {
-        var i, j;
+    var l, i , j;
+    for (l = 0; l < map.ground.length; l++) {
         for(i = xMin; i < xMax; i++) {
             for(j = yMin; j < yMax; j++) {
                 var tile = map.get.ground(i, j, l);
@@ -154,23 +155,23 @@ var render = function() {
                 }
             }
         } 
-    });
-    map.sprites.forEach(function(layer, l) {
-        var i, j;
+    }
+    var l, i, j, k;
+    for (l = 0; l < map.sprites.length; l++) {
         for(i = xMin; i < xMax; i++) {
             for(j = yMin; j < yMax; j++) {
                 var sprites = map.get.sprites(i, j, l);
                 if (sprites) {
-                    sprites.forEach(function(sprite) {
-                        context.drawImage(sprite.image, 
-                            sprite.x * 32 + sprite.offsetX + x,
-                            sprite.y * 32 + sprite.offsetY + y
+                    for (k = 0; k < sprites.length; k++) {
+                        context.drawImage(sprites[k].image, 
+                            sprites[k].x * 32 + sprites[k].offsetX + x,
+                            sprites[k].y * 32 + sprites[k].offsetY + y
                         );
-                    });
+                    }
                 }
             }
         } 
-    });
+    }
 };
 
 function generateMap() {
@@ -275,9 +276,10 @@ function generateMap() {
 var main = function() {
     var delta = Date.now() - then;
 
-    functions.forEach(function(f) {
-        f(delta);
-    });
+    var i;
+    for (i = 0; i < functions.length; i++) {
+        functions[i](delta);
+    }
 
     then += delta;
 };
