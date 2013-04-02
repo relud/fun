@@ -7,10 +7,10 @@ var newTile = function(imagePath, x, y, z, passable) {
     tile.y = 0;
     tile.z = 0;
 
-    if (passable != undefined) { tile.passable = passable; }
-    if (x != undefined) { tile.x = x; }
-    if (y != undefined) { tile.y = y; }
-    if (z != undefined) { tile.z = z; }
+    if (passable !== undefined) { tile.passable = passable; }
+    if (x !== undefined) { tile.x = x; }
+    if (y !== undefined) { tile.y = y; }
+    if (z !== undefined) { tile.z = z; }
 
     return tile;
 };
@@ -26,10 +26,10 @@ var newSprite = function(imagePath, x, y, z, passable, otherMap) {
     sprite.offsetX = 0;
     sprite.offsetY = 0;
 
-    if (passable != undefined) { sprite.passable = passable; }
-    if (x != undefined) { sprite.x = x; }
-    if (y != undefined) { sprite.y = y; }
-    if (z != undefined) { sprite.z = z; }
+    if (passable !== undefined) { sprite.passable = passable; }
+    if (x !== undefined) { sprite.x = x; }
+    if (y !== undefined) { sprite.y = y; }
+    if (z !== undefined) { sprite.z = z; }
 
     var m = otherMap
     if (!otherMap) {
@@ -82,7 +82,7 @@ var move = function(delta) {
         direction += "e";
         displacement[0] += 1;
     }
-    if (direction == "") {
+    if (direction === "") {
         return;
     }
 
@@ -120,7 +120,7 @@ var move = function(delta) {
         if (frames <= 0) {
             moving = false;
             var index = functions.indexOf(animate);
-            if (index != -1) {
+            if (index !== -1) {
                 functions.splice(index,1);
             }
         }
@@ -132,7 +132,7 @@ var render = function() {
     var x = canvas.width / 2;
     var y = canvas.height / 2;
 
-    if (map.focus != undefined) {
+    if (map.focus !== undefined) {
         x -= map.focus.x*32 + map.focus.offsetX;
         y -= map.focus.y*32 + map.focus.offsetY;
     }
@@ -184,7 +184,7 @@ function generateMap() {
     for (x = 0; x < 100; x++) {
         map.ground[0][x] = {};
         for (y = 0; y < 100; y++) {
-            if (x == 0 || x == 99 || y == 0 || y == 99) {
+            if (x === 0 || x === 99 || y === 0 || y === 99) {
                 map.ground[0][x][y] = newTile("images/black.png", x, y, 0, false);
             } else {
                 var p = Math.random();
@@ -207,7 +207,7 @@ function generateMap() {
                 !map.ground[z][x][y]
            ) {
             return undefined;
-        } else if (property != undefined) {
+        } else if (property !== undefined) {
             return map.ground[z][x][y][property];
         } else {
             return map.ground[z][x][y];
@@ -222,11 +222,11 @@ function generateMap() {
                 !map.sprites[z][x][y]
            ) {
             return undefined;
-        } else if (index != undefined) {
+        } else if (index !== undefined) {
             if (!map.sprites[z][x][y][index]) {
                 return undefined;
             } else {
-                if (property != undefined) {
+                if (property !== undefined) {
                     return map.sprites[z][x][y][index][property];
                 } else {
                     return map.sprites[z][x][y][index];
@@ -241,7 +241,7 @@ function generateMap() {
         var oldSprites = map.get.sprites(sprite.x, sprite.y, sprite.z);
         if (oldSprites) {
             var index = oldSprites.indexOf(sprite);
-            if (index != -1) {
+            if (index !== -1) {
                 oldSprites.splice(index, 1);
             } 
         }
