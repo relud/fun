@@ -61,19 +61,43 @@ var move = function(delta) {
 
     var direction = "";
     var displacement = [0,0,0];
-    if (keysPressed[38]) {
-        direction += "n";
-        displacement[1] -= 1;
-    } else if (keysPressed[40]) {
-        direction += "s";
-        displacement[1] += 1;
-    }
-    if (keysPressed[37]) {
-        direction += "w";
-        displacement[0] -= 1;
-    } else if (keysPressed[39]) {
-        direction += "e";
-        displacement[0] += 1;
+    if (mouse.down) {
+        var x = mouse.x - (canvas.width / 2);
+        var y = mouse.y - (canvas.height / 2);
+        
+        if (Math.abs(x/y) < 2) {
+            if (y > 0) {
+                direction += "s";
+                displacement[1] += 1;
+            } else if (y < 0) {
+                direction += "n";
+                displacement[1] -= 1;
+            }
+        }
+        if (Math.abs(y/x) < 2) {
+            if (x > 0) {
+                direction += "e";
+                displacement[0] += 1;
+            } else if (x < 0) {
+                direction += "w";
+                displacement[0] -= 1;
+            }
+        }
+    } else {
+        if (keysPressed[38]) {
+            direction += "n";
+            displacement[1] -= 1;
+        } else if (keysPressed[40]) {
+            direction += "s";
+            displacement[1] += 1;
+        }
+        if (keysPressed[37]) {
+            direction += "w";
+            displacement[0] -= 1;
+        } else if (keysPressed[39]) {
+            direction += "e";
+            displacement[0] += 1;
+        }
     }
     if (direction === "") {
         return;
@@ -299,11 +323,15 @@ var resize = function() {
     var render_distance = 12;
     var diameter = render_distance * 2 + 1;
 
-    // 16 is the scaling factor for our images
-    TILE_SIZE = Math.ceil(Math.sqrt(w * h) / diameter / 16) * 16;
+    // 16 is the scaling step size for our images, and 256 is our largest scale
+    TILE_SIZE = Math.min(Math.ceil(Math.sqrt(w * h) / diameter / 16) * 16, 256);
     //TILE_SIZE = 64;
 
     images = loadImages();
+};
+
+var handleMouseMove = function(event) {
+    
 };
 
 var main = function() {
@@ -317,26 +345,39 @@ var main = function() {
     then += delta;
 };
 
-var TILE_SIZE, images, map, canvas, context, keys_pressed, then, functions, moving;
+var TILE_SIZE, images, map, canvas, context, keys_pressed, mouse, then, functions, moving;
 
 TILE_SIZE = 64;
 
+//setup canvas
 canvas = document.createElement("canvas");
 canvas.id = "canvas";
 context = canvas.getContext("2d");
 document.body.appendChild(canvas);
 
-resize();
+//setup input
 
+//keyboard
+keysPressed = {};
+addEventListener("keydown", function(e){ keysPressed[e.keyCode] = true; }, false);
+addEventListener("keyup", function(e){ delete keysPressed[e.keyCode]; }, false);
+
+//mouse
+mouse = {
+    down: false,
+    x: 0,
+    y: 0
+};
+addEventListener("mousedown", function(){ mouse.down = true; }, false);
+addEventListener("mouseup", function(){ mouse.down = false; }, false);
+addEventListener("mousemove", function(e){ mouse.x = e.clientX; mouse.y = e.clientY; }, false);
+
+//be responsive to page size
+resize();
 $(window).on('resize', $.proxy(resize));
 
 map = generateMap();
 map.scale = 1;
-
-keysPressed = {};
-
-addEventListener("keydown", function(e){ keysPressed[e.keyCode] = true; }, false);
-addEventListener("keyup", function(e){ delete keysPressed[e.keyCode]; }, false);
 
 then = Date.now();
 
