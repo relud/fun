@@ -65,7 +65,7 @@ var move = function(delta) {
         var x = mouse.x - (canvas.width / 2);
         var y = mouse.y - (canvas.height / 2);
         
-        if (Math.abs(x/y) < 2) {
+        if (Math.abs(x/y) < 2.5) {
             if (y > 0) {
                 direction += "s";
                 displacement[1] += 1;
@@ -74,7 +74,7 @@ var move = function(delta) {
                 displacement[1] -= 1;
             }
         }
-        if (Math.abs(y/x) < 2) {
+        if (Math.abs(y/x) < 2.5) {
             if (x > 0) {
                 direction += "e";
                 displacement[0] += 1;
@@ -371,6 +371,18 @@ mouse = {
 addEventListener("mousedown", function(){ mouse.down = true; }, false);
 addEventListener("mouseup", function(){ mouse.down = false; }, false);
 addEventListener("mousemove", function(e){ mouse.x = e.clientX; mouse.y = e.clientY; }, false);
+addEventListener("touchstart", function(e){ 
+    mouse.down = true; 
+    e.preventDefault();
+}, false);
+addEventListener("touchend", function(e){
+    mouse.down = false;
+    e.preventDefault();
+}, false);
+addEventListener("touchmove", function(e){
+    mouse.x = e.clientX; mouse.y = e.clientY;
+    e.preventDefault();
+}, false);
 
 //be responsive to page size
 resize();
