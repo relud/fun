@@ -95,8 +95,8 @@ var move = function(delta) {
     if (!passable(there.x, there.y, there.z)) { return; }
 
     moving = true;
-    map.focus.offsetX -= (there.x - map.focus.x)*32;
-    map.focus.offsetY -= (there.y - map.focus.y)*32;
+    map.focus.offsetX -= (there.x - map.focus.x)*TILE_SIZE;
+    map.focus.offsetY -= (there.y - map.focus.y)*TILE_SIZE;
     map.sprites.relocate(map.focus, there.x, there.y, there.z);
     var frames = 10;
     var x = map.focus.offsetX / frames;
@@ -124,20 +124,23 @@ var move = function(delta) {
 };
 
 var render = function() {
-    var x = canvas.width / 2;
-    var y = canvas.height / 2;
+    context.save();
+    context.scale(map.scale, map.scale);
 
-    if (map.focus !== undefined) {
-        x -= map.focus.x*32 + map.focus.offsetX;
-        y -= map.focus.y*32 + map.focus.offsetY;
-    }
-
+    var x = (canvas.width / 2 - 16) / map.scale;
+    var y = (canvas.height / 2 - 16) / map.scale;
+    
     var xMax, xMin, yMax, yMin;
 
-    xMax = Math.round(map.focus.x + 1 + (canvas.width / 2 / 32));
-    xMin = Math.round(map.focus.x - 1 - (canvas.width / 2 / 32));
-    yMax = Math.round(map.focus.y + 1 + (canvas.height / 2 / 32));
-    yMin = Math.round(map.focus.y - 1 - (canvas.height / 2 / 32));
+    xMax = parseInt(map.focus.x + x / TILE_SIZE)+3;
+    xMin = parseInt(map.focus.x - x / TILE_SIZE)-1;
+    yMax = parseInt(map.focus.y + y / TILE_SIZE)+3;
+    yMin = parseInt(map.focus.y - y / TILE_SIZE)-1;
+
+    if (map.focus !== undefined) {
+        x -= map.focus.x*TILE_SIZE + map.focus.offsetX;
+        y -= map.focus.y*TILE_SIZE + map.focus.offsetY;
+    }
 
     var l, i , j;
     for (l = 0; l < map.ground.length; l++) {
@@ -145,7 +148,7 @@ var render = function() {
             for(j = yMin; j < yMax; j++) {
                 var tile = map.get.ground(i, j, l);
                 if (tile) {
-                    context.drawImage(tile.image, tile.x*32 + x, tile.y*32 + y);
+                    context.drawImage(tile.image, parseInt(tile.x*TILE_SIZE + x), parseInt(tile.y*TILE_SIZE + y));
                 }
             }
         } 
@@ -158,14 +161,15 @@ var render = function() {
                 if (sprites) {
                     for (k = 0; k < sprites.length; k++) {
                         context.drawImage(sprites[k].image, 
-                            sprites[k].x * 32 + sprites[k].offsetX + x,
-                            sprites[k].y * 32 + sprites[k].offsetY + y
+                            parseInt(sprites[k].x * TILE_SIZE + sprites[k].offsetX + x),
+                            parseInt(sprites[k].y * TILE_SIZE + sprites[k].offsetY + y)
                         );
                     }
                 }
             }
         } 
     }
+    context.restore();
 };
 
 function generateMap() {
@@ -278,20 +282,24 @@ var main = function() {
     then += delta;
 };
 
+var TILE_SIZE = 32;
+console.log("hero_"+TILE_SIZE+".png")
+
 var canvas = document.createElement("canvas");
 canvas.id = "canvas";
 var context = canvas.getContext("2d");
 document.body.appendChild(canvas);
 
-canvas.width = window.innerWidth - 32;
-canvas.height = window.innerHeight - 32;
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
 $(window).on('resize', $.proxy(function(){
-    canvas.width = window.innerWidth - 32;
-    canvas.height = window.innerHeight - 32;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 }));
 
 var map = generateMap();
+map.scale = 1;
 
 var keysPressed = {};
 
