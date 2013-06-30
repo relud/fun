@@ -373,16 +373,19 @@ addEventListener("mouseup", function(){ mouse.down = false; }, false);
 addEventListener("mousemove", function(e){ mouse.x = e.clientX; mouse.y = e.clientY; }, false);
 addEventListener("touchstart", function(e){ 
     mouse.down = true; 
-    mouse.x = e.clientX; mouse.y = e.clientY;
+    touch = e.changedTouches.pop();
+    mouse.x = touch.clientX; mouse.y = touch.clientY;
     e.preventDefault();
 }, false);
 addEventListener("touchend", function(e){
     mouse.down = false;
-    mouse.x = e.clientX; mouse.y = e.clientY;
+    touch = e.changedTouches.pop();
+    mouse.x = touch.clientX; mouse.y = touch.clientY;
     e.preventDefault();
 }, false);
 addEventListener("touchmove", function(e){
-    mouse.x = e.clientX; mouse.y = e.clientY;
+    touch = e.changedTouches.pop();
+    mouse.x = touch.clientX; mouse.y = touch.clientY;
     e.preventDefault();
 }, false);
 
