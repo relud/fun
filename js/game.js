@@ -373,7 +373,7 @@ addEventListener("mouseup", function(){ mouse.down = false; }, false);
 addEventListener("mousemove", function(e){ mouse.x = e.clientX; mouse.y = e.clientY; }, false);
 addEventListener("touchstart", function(e){ 
     mouse.down = true; 
-    touch = e.changedTouches.pop();
+    touch = e.changedTouches;
     mouse.x = touch.clientX; mouse.y = touch.clientY;
     e.preventDefault();
 }, false);
@@ -384,7 +384,7 @@ addEventListener("touchend", function(e){
     e.preventDefault();
 }, false);
 addEventListener("touchmove", function(e){
-    touch = e.changedTouches.pop();
+    touch = e.changedTouches;
     mouse.x = touch.clientX; mouse.y = touch.clientY;
     e.preventDefault();
 }, false);
