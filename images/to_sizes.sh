@@ -9,12 +9,11 @@ fi
 
 cd "$( echo "$(pwd)/$0" | sed -E 's_(.*)/.*_\1_')"
 
-for image in $(ls source); do
-    echo $image
+for f in $(ls source); do
+    image="$(echo $f | sed 's/.png//')"
     for n in $(seq 16); do
         size=$((n*16))
         mkdir -p $size
-        cp source/$image $size/${image}_${size}.png
-        convert -size ${size}x${size} $size/${image}_${size}.png --resize ${size}x${size}
+        convert source/${image}.png -scale ${size}x${size} $size/${image}.png
     done
 done

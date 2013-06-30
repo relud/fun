@@ -1,6 +1,5 @@
-var Tile = function(imagePath, x, y, z, passable) {
-    this.image = new Image();
-    this.image.src = imagePath;
+var Tile = function(image, x, y, z, passable) {
+    this.image = image;
     this.passable = true;
     this.x = 0;
     this.y = 0;
@@ -12,9 +11,8 @@ var Tile = function(imagePath, x, y, z, passable) {
     if (z !== undefined) { this.z = z; }
 };
 
-var Sprite = function(imagePath, x, y, z, passable, otherMap) {
-    this.image = new Image();
-    this.image.src = imagePath;
+var Sprite = function(image, x, y, z, passable, otherMap) {
+    this.image = image;
     this.passable = false;
     this.x = 0;
     this.y = 0;
@@ -148,7 +146,7 @@ var render = function() {
             for(j = yMin; j < yMax; j++) {
                 var tile = map.get.ground(i, j, l);
                 if (tile) {
-                    context.drawImage(tile.image, parseInt(tile.x*TILE_SIZE + x), parseInt(tile.y*TILE_SIZE + y));
+                    context.drawImage(images[tile.image], parseInt(tile.x*TILE_SIZE + x), parseInt(tile.y*TILE_SIZE + y));
                 }
             }
         } 
@@ -160,7 +158,7 @@ var render = function() {
                 var sprites = map.get.sprites(i, j, l);
                 if (sprites) {
                     for (k = 0; k < sprites.length; k++) {
-                        context.drawImage(sprites[k].image, 
+                        context.drawImage(images[sprites[k].image], 
                             parseInt(sprites[k].x * TILE_SIZE + sprites[k].offsetX + x),
                             parseInt(sprites[k].y * TILE_SIZE + sprites[k].offsetY + y)
                         );
@@ -184,15 +182,15 @@ function generateMap() {
         map.ground[0][x] = {};
         for (y = 0; y < 100; y++) {
             if (x === 0 || x === 99 || y === 0 || y === 99) {
-                map.ground[0][x][y] = new Tile("images/black.png", x, y, 0, false);
+                map.ground[0][x][y] = new Tile("black", x, y, 0, false);
             } else {
                 var p = Math.random();
                 if (0 <= p && p < 0.8 ) {
-                    map.ground[0][x][y] = new Tile("images/grass0.png", x, y, 0);
+                    map.ground[0][x][y] = new Tile("grass0", x, y, 0);
                 } else if (0.8 <= p && p < 0.9) {
-                    map.ground[0][x][y] = new Tile("images/grass1.png", x, y, 0);
+                    map.ground[0][x][y] = new Tile("grass1", x, y, 0);
                 } else if (0.9 <= p && p <= 1) {
-                    map.ground[0][x][y] = new Tile("images/tree0.png", x, y, 0, false);
+                    map.ground[0][x][y] = new Tile("tree0", x, y, 0, false);
                 }
             }
         }
@@ -263,13 +261,50 @@ function generateMap() {
         sprite.z = z;
     };
 
-    var hero = new Sprite("images/hero.png", 50, 50, 0, false, map);
+    var hero = new Sprite("hero", 50, 50, 0, false, map);
     map.focus = hero;
 
-    var goblin = new Sprite("images/goblin.png", 58, 58, 0, false, map);
+    var goblin = new Sprite("goblin", 58, 58, 0, false, map);
 
     return map;
-}
+};
+
+var loadImages = function() {
+    var names = [
+        "black",
+        "goblin",
+        "grass0",
+        "grass1",
+        "hero",
+        "tree0"
+        ];
+    var images = {}
+
+    var i;
+    for (i = 0; i < names.length; i++) {
+        images[names[i]] = new Image();
+        images[names[i]].src = "images/"+TILE_SIZE+"/"+names[i]+".png"
+    }
+
+    return images;
+};
+
+var resize = function() {
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+
+    canvas.width = w;
+    canvas.height = h;
+
+    var render_distance = 12;
+    var diameter = render_distance * 2 + 1;
+
+    // 16 is the scaling factor for our images
+    TILE_SIZE = Math.ceil(Math.sqrt(w * h) / diameter / 16) * 16;
+    //TILE_SIZE = 64;
+
+    images = loadImages();
+};
 
 var main = function() {
     var delta = Date.now() - then;
@@ -282,34 +317,31 @@ var main = function() {
     then += delta;
 };
 
-var TILE_SIZE = 32;
-console.log("hero_"+TILE_SIZE+".png")
+var TILE_SIZE, images, map, canvas, context, keys_pressed, then, functions, moving;
 
-var canvas = document.createElement("canvas");
+TILE_SIZE = 64;
+
+canvas = document.createElement("canvas");
 canvas.id = "canvas";
-var context = canvas.getContext("2d");
+context = canvas.getContext("2d");
 document.body.appendChild(canvas);
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+resize();
 
-$(window).on('resize', $.proxy(function(){
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}));
+$(window).on('resize', $.proxy(resize));
 
-var map = generateMap();
+map = generateMap();
 map.scale = 1;
 
-var keysPressed = {};
+keysPressed = {};
 
 addEventListener("keydown", function(e){ keysPressed[e.keyCode] = true; }, false);
 addEventListener("keyup", function(e){ delete keysPressed[e.keyCode]; }, false);
 
-var then = Date.now();
+then = Date.now();
 
 setInterval(render, 30);
 
-var functions = [move];
-var moving = false;
+functions = [move];
+moving = false;
 setInterval(main,1);
