@@ -11,138 +11,128 @@ var Tile = function(image, x, y, z, passable) {
     if (z !== undefined) { this.z = z; }
 };
 
-var Sprite = function(image, x, y, z, passable, otherMap) {
+var Sprite = function(image, x, y, z, passable, has_health, health, otherMap) {
+    this.animating = false;
+    this.has_health = false;
+    this.health = health;
+    this.health_max = health;
     this.image = image;
+    this.offsetX = 0;
+    this.offsetY = 0;
     this.passable = false;
     this.x = 0;
     this.y = 0;
     this.z = 0;
-    this.offsetX = 0;
-    this.offsetY = 0;
 
+    if (this.has_health !== undefined) { this.has_health = has_health; }
     if (passable !== undefined) { this.passable = passable; }
     if (x !== undefined) { this.x = x; }
     if (y !== undefined) { this.y = y; }
     if (z !== undefined) { this.z = z; }
 
-    var m = otherMap
+    this.map = otherMap;
     if (!otherMap) {
-        m = map;
+        this.map = map;
     }
     
-    m.sprites.relocate(this, this.x, this.y, this.z);
-}
+    this.map.sprites.relocate(this, this.x, this.y, this.z);
 
-var passable = function(x, y, z) {
-    var tile_p = map.get.ground(x,y,z,"passable");
-    var sprites = map.get.sprites(x,y,z);
-    if (!tile_p) {
-        return false;
-    }
-    if (sprites) {
-        var p = true;
-        var i;
-        for (i = 0; i < sprites.length; i++) {
-            if (sprites[i]) {
-                if (!sprites[i].passable) {
-                    p = false;
+    this.move = move;
+    function move() {
+        console.log(this.animating);
+        if ( this.animating ) { return; }
+
+        var direction = "";
+        var displacement = [0,0,0];
+        if (mouse.down) {
+            var x = mouse.x - (canvas.width / 2);
+            var y = mouse.y - (canvas.height / 2);
+            
+            if (Math.abs(x/y) < 2.5) {
+                if (y > 0) {
+                    direction += "s";
+                    displacement[1] += 1;
+                } else if (y < 0) {
+                    direction += "n";
+                    displacement[1] -= 1;
                 }
             }
-        }
-        if (!p) {
-            return false;
-        }
-    }
-    return true;
-};
-
-var move = function(delta) {
-    if (moving) { return; }
-
-    var direction = "";
-    var displacement = [0,0,0];
-    if (mouse.down) {
-        var x = mouse.x - (canvas.width / 2);
-        var y = mouse.y - (canvas.height / 2);
-        
-        if (Math.abs(x/y) < 2.5) {
-            if (y > 0) {
-                direction += "s";
-                displacement[1] += 1;
-            } else if (y < 0) {
+            if (Math.abs(y/x) < 2.5) {
+                if (x > 0) {
+                    direction += "e";
+                    displacement[0] += 1;
+                } else if (x < 0) {
+                    direction += "w";
+                    displacement[0] -= 1;
+                }
+            }
+        } else {
+            if (keysPressed[38]) {
                 direction += "n";
                 displacement[1] -= 1;
+            } else if (keysPressed[40]) {
+                direction += "s";
+                displacement[1] += 1;
             }
-        }
-        if (Math.abs(y/x) < 2.5) {
-            if (x > 0) {
-                direction += "e";
-                displacement[0] += 1;
-            } else if (x < 0) {
+            if (keysPressed[37]) {
                 direction += "w";
                 displacement[0] -= 1;
+            } else if (keysPressed[39]) {
+                direction += "e";
+                displacement[0] += 1;
             }
         }
-    } else {
-        if (keysPressed[38]) {
-            direction += "n";
-            displacement[1] -= 1;
-        } else if (keysPressed[40]) {
-            direction += "s";
-            displacement[1] += 1;
+        if (direction === "") {
+            return;
         }
-        if (keysPressed[37]) {
-            direction += "w";
-            displacement[0] -= 1;
-        } else if (keysPressed[39]) {
-            direction += "e";
-            displacement[0] += 1;
+
+        var teleport = map.get.ground(this.x, this.y, this.z, direction);
+        var there = {}
+        if (!teleport) {
+            there.x = this.x + displacement[0];
+            there.y = this.y + displacement[1];
+            there.z = this.z + displacement[2];
+        } else {
+            there.x = teleport.x;
+            there.y = teleport.y;
+            there.z = teleport.z;
         }
-    }
-    if (direction === "") {
-        return;
-    }
+        if (!this.map.passable(there.x, there.y, there.z)) { return; }
 
-    var special = map.get.ground(map.focus.x, map.focus.y, map.focus.z, direction);
-    var there = {}
-    if (!special) {
-        there.x = map.focus.x + displacement[0]; 
-        there.y = map.focus.y + displacement[1];
-        there.z = map.focus.z + displacement[2];
-    } else {
-        there.x = special.x;
-        there.y = special.y;
-        there.z = special.z;
-    }
-    if (!passable(there.x, there.y, there.z)) { return; }
+        this.animating = true;
+        this.offsetX -= (there.x - this.x)*TILE_SIZE;
+        this.offsetY -= (there.y - this.y)*TILE_SIZE;
+        map.sprites.relocate(map.focus, there.x, there.y, there.z);
 
-    moving = true;
-    map.focus.offsetX -= (there.x - map.focus.x)*TILE_SIZE;
-    map.focus.offsetY -= (there.y - map.focus.y)*TILE_SIZE;
-    map.sprites.relocate(map.focus, there.x, there.y, there.z);
-    var frames = 10;
-    var x = map.focus.offsetX / frames;
-    var y = map.focus.offsetY / frames;
+        var frames = 5;
+        var x = map.focus.offsetX / frames;
+        var y = map.focus.offsetY / frames;
 
-    var passed = 0;
-    var animate = function(delta) {
-        passed += delta;
-        var i;
-        var speed = 15
-        for (i = speed; frames > 0 && i < passed; passed -= speed) {
-            map.focus.offsetX -= x;
-            map.focus.offsetY -= y;
-            frames--;
-        }
-        if (frames <= 0) {
-            moving = false;
-            var index = functions.indexOf(animate);
-            if (index !== -1) {
-                functions.splice(index,1);
+        var passed = 0;
+        this.animate = animate;
+        function animate(delta) {
+            passed += delta;
+            var i;
+            var speed = 30;
+            for (i = speed; frames > 0 && i < passed; passed -= speed) {
+                this.offsetX -= x;
+                this.offsetY -= y;
+                frames--;
             }
-        }
+            if (frames <= 0) {
+                this.animating = false;
+                var index = functions.indexOf(this.animate);
+                if (index !== -1) {
+                    functions.splice(index,1);
+                }
+            }
+        };
+        functions.push(animate);
     };
-    functions.push(animate);
+}
+
+
+var move = function(delta) {
 };
 
 var render = function() {
@@ -285,10 +275,34 @@ function generateMap() {
         sprite.z = z;
     };
 
-    var hero = new Sprite("hero", 50, 50, 0, false, map);
+    var hero = new Sprite("knight_s", 50, 50, 0, false, true, 10, map);
     map.focus = hero;
 
-    var goblin = new Sprite("goblin", 58, 58, 0, false, map);
+    var goblin = new Sprite("goblin", 58, 58, 0, false, true, 10, map);
+
+    map.passable = passable;
+    function passable(x, y, z) {
+        var tile_p = this.get.ground(x,y,z,"passable");
+        var sprites = this.get.sprites(x,y,z);
+        if (!tile_p) {
+            return false;
+        }
+        if (sprites) {
+            var p = true;
+            var i;
+            for (i = 0; i < sprites.length; i++) {
+                if (sprites[i]) {
+                    if (!sprites[i].passable) {
+                        p = false;
+                    }
+                }
+            }
+            if (!p) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     return map;
 };
@@ -299,7 +313,7 @@ var loadImages = function() {
         "goblin",
         "grass0",
         "grass1",
-        "hero",
+        "knight_s",
         "tree0"
         ];
     var images = {}
@@ -409,6 +423,6 @@ then = Date.now();
 
 setInterval(render, 30);
 
-functions = [move];
+functions = [map.focus.move];
 moving = false;
 setInterval(main,1);
