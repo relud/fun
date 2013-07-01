@@ -213,27 +213,29 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
         var z = this.z;
 
         if (inputs.mouse.down) {
-            var x = inputs.mouse.x - (canvas.width / 2);
-            var y = inputs.mouse.y - (canvas.height / 2);
+            console.log(inputs.mouse);
+            var x_relative = inputs.mouse.x - (canvas.width / 2);
+            var y_relative = inputs.mouse.y - (canvas.height / 2);
             
-            if (Math.abs(x/y) < 2.5) {
-                if (y > 0) {
+            if (Math.abs(x_relative/y_relative) < 2.5) {
+                if (y_relative > 0) {
                     direction += "s";
                     y += 1;
-                } else if (y < 0) {
+                } else if (y_relative < 0) {
                     direction += "n";
                     y -= 1;
                 }
             }
-            if (Math.abs(y/x) < 2.5) {
-                if (x > 0) {
+            if (Math.abs(y_relative/x_relative) < 2.5) {
+                if (x_relative > 0) {
                     direction += "e";
                     x += 1;
-                } else if (x < 0) {
+                } else if (x_relative < 0) {
                     direction += "w";
                     x -= 1;
                 }
             }
+            console.log(direction);
         } else {
             if (inputs.keys_down[38]) {
                 direction += "n";
@@ -249,9 +251,6 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
                 direction += "e";
                 x += 1;
             }
-        }
-        if (direction === "") {
-            return;
         }
 
         var special_destination = this.map.get_ground(this.x, this.y, this.z, direction);
@@ -469,9 +468,11 @@ inputs.mouse = {
     x: 0,
     y: 0
 };
+
 addEventListener("mousedown", function(){ inputs.mouse.down = true; }, false);
 addEventListener("mouseup", function(){ inputs.mouse.down = false; }, false);
 addEventListener("mousemove", function(e){ inputs.mouse.x = e.clientX; inputs.mouse.y = e.clientY; }, false);
+
 addEventListener("touchstart", function(e){ 
     touches = e.changedTouches;
     if (touches !== undefined) {
