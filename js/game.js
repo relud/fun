@@ -37,9 +37,7 @@ var Sprite = function(image, x, y, z, passable, has_health, health, otherMap) {
     
     this.map.sprites.relocate(this, this.x, this.y, this.z);
 
-    this.move = move;
-    function move() {
-        console.log(this.animating);
+    this.move = function() {
         if ( this.animating ) { return; }
 
         var direction = "";
@@ -109,8 +107,7 @@ var Sprite = function(image, x, y, z, passable, has_health, health, otherMap) {
         var y = map.focus.offsetY / frames;
 
         var passed = 0;
-        this.animate = animate;
-        function animate(delta) {
+        this.animate = function(delta) {
             passed += delta;
             var i;
             var speed = 30;
@@ -121,13 +118,13 @@ var Sprite = function(image, x, y, z, passable, has_health, health, otherMap) {
             }
             if (frames <= 0) {
                 this.animating = false;
-                var index = functions.indexOf(this.animate);
+                var index = methods.indexOf([this, "animate"]);
                 if (index !== -1) {
                     functions.splice(index,1);
                 }
             }
         };
-        functions.push(animate);
+        methods.push([this, "animate"]);
     };
 }
 
@@ -355,11 +352,15 @@ var main = function() {
     for (i = 0; i < functions.length; i++) {
         functions[i](delta);
     }
+    for (i = 0; i < methods.length; i++) {
+        m = methods[i];
+        m[0][m[1]](delta);
+    }
 
     then += delta;
 };
 
-var TILE_SIZE, images, map, canvas, context, keys_pressed, mouse, then, functions, moving;
+var TILE_SIZE, images, map, canvas, context, keys_pressed, mouse, then, functions, methods, moving;
 
 TILE_SIZE = 64;
 
@@ -423,6 +424,7 @@ then = Date.now();
 
 setInterval(render, 30);
 
-functions = [map.focus.move];
+functions = [];
+methods = [[map.focus,"move"]];
 moving = false;
 setInterval(main,1);
