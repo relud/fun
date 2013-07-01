@@ -213,7 +213,6 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
         var z = this.z;
 
         if (inputs.mouse.down) {
-            console.log(inputs.mouse);
             var x_relative = inputs.mouse.x - (canvas.width / 2);
             var y_relative = inputs.mouse.y - (canvas.height / 2);
             
@@ -235,7 +234,6 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
                     x -= 1;
                 }
             }
-            console.log(direction);
         } else {
             if (inputs.keys_down[38]) {
                 direction += "n";
@@ -260,13 +258,29 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
             z = special_destination.z;
         }
 
-        if (map.passable(x,y,z)) {
-            this.move(direction,x,y,z);
-        } else {
-            // i
-            return;
+        if (direction){
+            if (map.passable(x,y,z)) {
+                this.move(direction,x,y,z);
+            } else {
+                this.move(direction,x,y,z,true);
+            }
+        } else if (inputs.keys_down[32]) {
+            this.animations.push({
+                frames: 10,
+                suffix: this.image_suffix + "_attack",
+                x: 0,
+                y: 0
+            });
+
+            this.animations.push({
+                frames: 1,
+                suffix: this.image_suffix,
+                x: 0,
+                y: 0
+            });
+
+            methods.push([this, "animate"]);
         }
-        return;
     };
 
     this.animate = function(delta, animations) {
@@ -275,51 +289,68 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
         }
         if (this.animations.length > 0) {
             this.acting = true;
-            var a = this.animations[0];
             this.time_passed += delta;
 
-            while (a.frames > 0 && this.time_passed > FRAME_MS) {
-                this.time_passed -= FRAME_MS;
-                this.image_suffix = a.suffix;
-                this.x_offset += a.x;
-                this.y_offset += a.y;
-                a.frames -= 1;
-            }
-            if (a.frames <= 0) {
-                this.animations.splice(0,1);
-            }
-            if (this.animations.length === 0) {
-                this.acting = false;
-                for (i = 0; i < methods.length; i++) {
-                    if (methods[i][0] === this && methods[i][1] === "animate") {
-                        methods.splice(i, 1);
-                        break;
-                    }
+            while (this.animations.length > 0 && this.time_passed > FRAME_MS) {
+                var a = this.animations[0];
+                while (a.frames > 0 && this.time_passed > FRAME_MS) {
+                    this.time_passed -= FRAME_MS;
+                    this.image_suffix = a.suffix;
+                    this.x_offset += a.x;
+                    this.y_offset += a.y;
+                    a.frames -= 1;
+                }
+                if (a.frames <= 0) {
+                    this.animations.splice(0,1);
                 }
             }
         } else {
-            throw "animate called, but no animations available to execute";
+            console.log("animate called, but no animations available to execute");
+        }
+        if (this.animations.length === 0) {
+            this.acting = false;
+            this.time_passed = 0;
+            for (i = 0; i < methods.length; i++) {
+                if (methods[i][0] === this && methods[i][1] === "animate") {
+                    methods.splice(i, 1);
+                }
+            }
         }
     };
 
-    this.move = function(direction, x, y, z) {
-        this.x_offset -= (x - this.x)*TILE_SIZE;
-        this.y_offset -= (y - this.y)*TILE_SIZE;
-        map.relocate_sprite(this, x, y, z);
-
-        var frames = 6;
-        a = {
-            suffix: "",
-            frames: frames,
-            x: 0 - (this.x_offset / frames),
-            y: 0 - (this.y_offset / frames)
-        };
-
+    this.move = function(direction, x, y, z, failed) {
+        var suffix = "";
         if (this.image_suffix !== "") {
-            a.suffix = "_" + direction[direction.length - 1];
+            suffix = "_" + direction[direction.length - 1];
         }
 
-        this.animations.push(a);
+        if (failed) {
+            this.animations.push({
+                suffix: suffix,
+                frames: 2,
+                x: (x-this.x) * TILE_SIZE / 16,
+                y: (y-this.y) * TILE_SIZE / 16
+            });
+            this.animations.push({
+                suffix: suffix,
+                frames: 2,
+                x: (this.x-x) * TILE_SIZE / 16,
+                y: (this.y-y) * TILE_SIZE / 16
+            });
+        } else {
+            this.x_offset -= (x - this.x)*TILE_SIZE;
+            this.y_offset -= (y - this.y)*TILE_SIZE;
+            map.relocate_sprite(this, x, y, z);
+
+            var frames = 6;
+
+            this.animations.push({
+                suffix: suffix,
+                frames: frames,
+                x: 0 - (this.x_offset / frames),
+                y: 0 - (this.y_offset / frames)
+            });
+        }
 
         methods.push([this, "animate"]);
     };
@@ -514,4 +545,4 @@ setInterval(draw, 30);
 functions = [];
 methods = [[map.focus,"act_on_input"]];
 moving = false;
-setInterval(main,1);
+setInterval(main,100);
