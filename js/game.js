@@ -1,3 +1,147 @@
+var Map = function() {
+    this.focus = {
+        x: 0,
+        y: 0
+    };
+    this.ground = [];
+    this.sprites = [];
+
+    this.get_ground = function(x, y, z, property) {
+        if (
+                !this.ground ||
+                !this.ground[z] ||
+                !this.ground[z][x] ||
+                !this.ground[z][x][y]
+           ) {
+            return undefined;
+        } else if (property !== undefined) {
+            return this.ground[z][x][y][property];
+        } else {
+            return this.ground[z][x][y];
+        }
+    };
+
+    this.get_sprites = function(x, y, z, index, property) {
+        if (
+                !this.sprites ||
+                !this.sprites[z] ||
+                !this.sprites[z][x] ||
+                !this.sprites[z][x][y]
+           ) {
+            return undefined;
+        } else if (index !== undefined) {
+            if (!this.sprites[z][x][y][index]) {
+                return undefined;
+            } else {
+                if (property !== undefined) {
+                    return this.sprites[z][x][y][index][property];
+                } else {
+                    return this.sprites[z][x][y][index];
+                }
+            }
+        } else {
+            return this.sprites[z][x][y];
+        }
+    };
+
+    this.relocate_sprite = function(sprite, x, y, z) {
+        var oldSprites = this.get_sprites(sprite.x, sprite.y, sprite.z);
+        if (oldSprites) {
+            var index = oldSprites.indexOf(sprite);
+            if (index !== -1) {
+                oldSprites.splice(index, 1);
+            }
+        }
+        if (!this.sprites) {
+            this.sprites = []
+        }
+        if (!this.sprites[z]) {
+            this.sprites[z] = {}
+        }
+        if (!this.sprites[z][x]) {
+            this.sprites[z][x] = {}
+        }
+        if (!this.sprites[z][x][y]) {
+            this.sprites[z][x][y] = []
+        }
+
+        this.get_sprites(x, y, z).push(sprite);
+        sprite.x = x;
+        sprite.y = y;
+        sprite.z = z;
+    };
+
+    this.passable = function(x, y, z) {
+        var tile_p = this.get_ground(x,y,z,"passable");
+        var sprites = this.get_sprites(x,y,z);
+        if (!tile_p) {
+            return false;
+        }
+        if (sprites) {
+            var p = true;
+            var i;
+            for (i = 0; i < sprites.length; i++) {
+                if (sprites[i]) {
+                    if (!sprites[i].passable) {
+                        p = false;
+                    }
+                }
+            }
+            if (!p) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    this.draw = function(ctx, x_min, y_min, x_max, y_max) {
+        var x_offset = (x_min + x_max - TILE_SIZE) / 2;
+        var y_offset = (y_min + y_max - TILE_SIZE) / 2;
+
+        var x_radius = Math.ceil((x_max - x_min) / TILE_SIZE);
+        var y_radius = Math.ceil((y_max - y_min) / TILE_SIZE);
+
+        var x_min_tile = -x_radius;
+        var y_min_tile = -y_radius;
+        var x_max_tile = x_radius;
+        var y_max_tile = y_radius;
+
+        if (this.focus !== undefined) {
+            x_offset -= this.focus.x*TILE_SIZE + this.focus.x_offset;
+            y_offset -= this.focus.y*TILE_SIZE + this.focus.y_offset;
+            x_min_tile += this.focus.x;
+            y_min_tile += this.focus.y;
+            x_max_tile += this.focus.x;
+            y_max_tile += this.focus.y;
+        }
+
+        var l, i , j;
+        for (l = 0; l < this.ground.length; l++) {
+            for(i = x_min_tile; i < x_max_tile; i++) {
+                for(j = y_min_tile; j < y_max_tile; j++) {
+                    var tile = this.get_ground(i, j, l);
+                    if (tile) {
+                        tile.draw_relative(context, x_offset, y_offset);
+                    }
+                }
+            }
+        }
+        var l, i, j, k;
+        for (l = 0; l < this.sprites.length; l++) {
+            for(i = x_min_tile; i < x_max_tile; i++) {
+                for(j = y_min_tile; j < y_max_tile; j++) {
+                    var sprites = this.get_sprites(i, j, l);
+                    if (sprites) {
+                        for (k = 0; k < sprites.length; k++) {
+                            sprites[k].draw_relative(context, x_offset, y_offset);
+                        }
+                    }
+                }
+            }
+        }
+    };
+};
+
 var Tile = function(image, x, y, z, passable) {
     this.image = image;
     this.passable = true;
@@ -9,23 +153,43 @@ var Tile = function(image, x, y, z, passable) {
     if (x !== undefined) { this.x = x; }
     if (y !== undefined) { this.y = y; }
     if (z !== undefined) { this.z = z; }
+
+    this.draw_relative = function(ctx, x_offset, y_offset) {
+        ctx.drawImage(
+            image_list[this.image],
+            parseInt(this.x*TILE_SIZE + x_offset),
+            parseInt(this.y*TILE_SIZE + y_offset)
+        );
+    };
+
+    this.draw = function(ctx, x, y) {
+        ctx.drawImage(
+            image_list[this.image],
+            parseInt(x),
+            parseInt(y)
+        );
+    };
 };
 
-var Sprite = function(image, x, y, z, passable, has_health, health, otherMap) {
-    this.animating = false;
+var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health, otherMap) {
+    this.acting = false;
+    this.animations = [];
     this.has_health = false;
     this.health = health;
     this.health_max = health;
     this.image = image;
-    this.offsetX = 0;
-    this.offsetY = 0;
+    this.image_suffix = "";
+    this.time_passed = 0;
     this.passable = false;
+    this.x_offset = 0;
+    this.y_offset = 0;
     this.x = 0;
     this.y = 0;
     this.z = 0;
 
     if (this.has_health !== undefined) { this.has_health = has_health; }
     if (passable !== undefined) { this.passable = passable; }
+    if (image_suffix !== undefined) { this.image_suffix = image_suffix; }
     if (x !== undefined) { this.x = x; }
     if (y !== undefined) { this.y = y; }
     if (z !== undefined) { this.z = z; }
@@ -35,157 +199,158 @@ var Sprite = function(image, x, y, z, passable, has_health, health, otherMap) {
         this.map = map;
     }
     
-    this.map.sprites.relocate(this, this.x, this.y, this.z);
+    this.map.relocate_sprite(this, this.x, this.y, this.z);
 
-    this.move = function() {
-        if ( this.animating ) { return; }
+    this.act_on_input = function() {
+        // only choose a new action when the last one is done
+        if (this.acting) { return; }
 
+        // parse inputs
         var direction = "";
-        var displacement = [0,0,0];
-        if (mouse.down) {
-            var x = mouse.x - (canvas.width / 2);
-            var y = mouse.y - (canvas.height / 2);
+
+        var x = this.x;
+        var y = this.y;
+        var z = this.z;
+
+        if (inputs.mouse.down) {
+            var x = inputs.mouse.x - (canvas.width / 2);
+            var y = inputs.mouse.y - (canvas.height / 2);
             
             if (Math.abs(x/y) < 2.5) {
                 if (y > 0) {
                     direction += "s";
-                    displacement[1] += 1;
+                    y += 1;
                 } else if (y < 0) {
                     direction += "n";
-                    displacement[1] -= 1;
+                    y -= 1;
                 }
             }
             if (Math.abs(y/x) < 2.5) {
                 if (x > 0) {
                     direction += "e";
-                    displacement[0] += 1;
+                    x += 1;
                 } else if (x < 0) {
                     direction += "w";
-                    displacement[0] -= 1;
+                    x -= 1;
                 }
             }
         } else {
-            if (keysPressed[38]) {
+            if (inputs.keys_down[38]) {
                 direction += "n";
-                displacement[1] -= 1;
-            } else if (keysPressed[40]) {
+                y -= 1;
+            } else if (inputs.keys_down[40]) {
                 direction += "s";
-                displacement[1] += 1;
+                y += 1;
             }
-            if (keysPressed[37]) {
+            if (inputs.keys_down[37]) {
                 direction += "w";
-                displacement[0] -= 1;
-            } else if (keysPressed[39]) {
+                x -= 1;
+            } else if (inputs.keys_down[39]) {
                 direction += "e";
-                displacement[0] += 1;
+                x += 1;
             }
         }
         if (direction === "") {
             return;
         }
 
-        var teleport = map.get.ground(this.x, this.y, this.z, direction);
-        var there = {}
-        if (!teleport) {
-            there.x = this.x + displacement[0];
-            there.y = this.y + displacement[1];
-            there.z = this.z + displacement[2];
-        } else {
-            there.x = teleport.x;
-            there.y = teleport.y;
-            there.z = teleport.z;
+        var special_destination = this.map.get_ground(this.x, this.y, this.z, direction);
+        if (special_destination !== undefined) {
+            x = special_destination.x;
+            y = special_destination.y;
+            z = special_destination.z;
         }
-        if (!this.map.passable(there.x, there.y, there.z)) { return; }
 
-        this.animating = true;
-        this.offsetX -= (there.x - this.x)*TILE_SIZE;
-        this.offsetY -= (there.y - this.y)*TILE_SIZE;
-        map.sprites.relocate(map.focus, there.x, there.y, there.z);
-
-        var frames = 5;
-        var x = map.focus.offsetX / frames;
-        var y = map.focus.offsetY / frames;
-
-        var passed = 0;
-        this.animate = function(delta) {
-            passed += delta;
-            var i;
-            var speed = 30;
-            for (i = speed; frames > 0 && i < passed; passed -= speed) {
-                this.offsetX -= x;
-                this.offsetY -= y;
-                frames--;
-            }
-            if (frames <= 0) {
-                this.animating = false;
-                var index = methods.indexOf([this, "animate"]);
-                if (index !== -1) {
-                    functions.splice(index,1);
-                }
-            }
-        };
-        methods.push([this, "animate"]);
+        if (map.passable(x,y,z)) {
+            this.move(direction,x,y,z);
+        } else {
+            // i
+            return;
+        }
+        return;
     };
-}
 
+    this.animate = function(delta, animations) {
+        if (Object.prototype.toString.call(animations) === "[object Array]") {
+            this.animations.concat(animations);
+        }
+        if (this.animations.length > 0) {
+            this.acting = true;
+            var a = this.animations[0];
+            this.time_passed += delta;
 
-var move = function(delta) {
-};
-
-var render = function() {
-    context.save();
-    context.scale(map.scale, map.scale);
-
-    var x = (canvas.width / 2 - 16) / map.scale;
-    var y = (canvas.height / 2 - 16) / map.scale;
-    
-    var xMax, xMin, yMax, yMin;
-
-    xMax = parseInt(map.focus.x + x / TILE_SIZE)+3;
-    xMin = parseInt(map.focus.x - x / TILE_SIZE)-1;
-    yMax = parseInt(map.focus.y + y / TILE_SIZE)+3;
-    yMin = parseInt(map.focus.y - y / TILE_SIZE)-1;
-
-    if (map.focus !== undefined) {
-        x -= map.focus.x*TILE_SIZE + map.focus.offsetX;
-        y -= map.focus.y*TILE_SIZE + map.focus.offsetY;
-    }
-
-    var l, i , j;
-    for (l = 0; l < map.ground.length; l++) {
-        for(i = xMin; i < xMax; i++) {
-            for(j = yMin; j < yMax; j++) {
-                var tile = map.get.ground(i, j, l);
-                if (tile) {
-                    context.drawImage(images[tile.image], parseInt(tile.x*TILE_SIZE + x), parseInt(tile.y*TILE_SIZE + y));
-                }
+            while (a.frames > 0 && this.time_passed > FRAME_MS) {
+                this.time_passed -= FRAME_MS;
+                this.image_suffix = a.suffix;
+                this.x_offset += a.x;
+                this.y_offset += a.y;
+                a.frames -= 1;
             }
-        } 
-    }
-    var l, i, j, k;
-    for (l = 0; l < map.sprites.length; l++) {
-        for(i = xMin; i < xMax; i++) {
-            for(j = yMin; j < yMax; j++) {
-                var sprites = map.get.sprites(i, j, l);
-                if (sprites) {
-                    for (k = 0; k < sprites.length; k++) {
-                        context.drawImage(images[sprites[k].image], 
-                            parseInt(sprites[k].x * TILE_SIZE + sprites[k].offsetX + x),
-                            parseInt(sprites[k].y * TILE_SIZE + sprites[k].offsetY + y)
-                        );
+            if (a.frames <= 0) {
+                this.animations.splice(0,1);
+            }
+            if (this.animations.length === 0) {
+                this.acting = false;
+                for (i = 0; i < methods.length; i++) {
+                    if (methods[i][0] === this && methods[i][1] === "animate") {
+                        methods.splice(i, 1);
+                        break;
                     }
                 }
             }
-        } 
+        } else {
+            throw "animate called, but no animations available to execute";
+        }
+    };
+
+    this.move = function(direction, x, y, z) {
+        this.x_offset -= (x - this.x)*TILE_SIZE;
+        this.y_offset -= (y - this.y)*TILE_SIZE;
+        map.relocate_sprite(this, x, y, z);
+
+        var frames = 6;
+        a = {
+            suffix: "",
+            frames: frames,
+            x: 0 - (this.x_offset / frames),
+            y: 0 - (this.y_offset / frames)
+        };
+
+        if (this.image_suffix !== "") {
+            a.suffix = "_" + direction[direction.length - 1];
+        }
+
+        this.animations.push(a);
+
+        methods.push([this, "animate"]);
+    };
+
+    this.draw_relative = function(ctx, x_offset, y_offset) {
+        ctx.drawImage(
+            image_list[this.image + this.image_suffix],
+            parseInt(this.x*TILE_SIZE + this.x_offset + x_offset),
+            parseInt(this.y*TILE_SIZE + this.y_offset + y_offset)
+        );
+    };
+
+    this.draw = function(ctx, x, y) {
+        ctx.drawImage(
+            image_list[this.image + this.image_suffix],
+            parseInt(x),
+            parseInt(y)
+        );
+    };
+}
+
+var draw = function() {
+    var i;
+    for (i = 0; i < draw_list.length; i++) {
+        draw_list[i].draw(context, 0, 0, canvas.width, canvas.height);
     }
-    context.restore();
 };
 
 function generateMap() {
-    var map = {};
-    map.get = {}
-    map.ground = [];
-    map.sprites = [];
+    var map = new Map();
 
     map.ground[0] = {};
     var x, y;
@@ -207,99 +372,9 @@ function generateMap() {
         }
     }
 
-    map.get.ground = function(x, y, z, property) {
-        if (
-                !map.ground ||
-                !map.ground[z] ||
-                !map.ground[z][x] ||
-                !map.ground[z][x][y]
-           ) {
-            return undefined;
-        } else if (property !== undefined) {
-            return map.ground[z][x][y][property];
-        } else {
-            return map.ground[z][x][y];
-        }
-    };
+    map.focus = new Sprite("knight", "_s", 50, 50, 0, false, true, 10, map);
 
-    map.get.sprites = function(x, y, z, index, property) {
-        if (
-                !map.sprites ||
-                !map.sprites[z] ||
-                !map.sprites[z][x] ||
-                !map.sprites[z][x][y]
-           ) {
-            return undefined;
-        } else if (index !== undefined) {
-            if (!map.sprites[z][x][y][index]) {
-                return undefined;
-            } else {
-                if (property !== undefined) {
-                    return map.sprites[z][x][y][index][property];
-                } else {
-                    return map.sprites[z][x][y][index];
-                }
-            }
-        } else {
-            return map.sprites[z][x][y];
-        }
-    };
-
-    map.sprites.relocate = function(sprite, x, y, z) {
-        var oldSprites = map.get.sprites(sprite.x, sprite.y, sprite.z);
-        if (oldSprites) {
-            var index = oldSprites.indexOf(sprite);
-            if (index !== -1) {
-                oldSprites.splice(index, 1);
-            } 
-        }
-        if (!map.sprites) {
-            map.sprites = []
-        }
-        if (!map.sprites[z]) {
-            map.sprites[z] = {}
-        }
-        if (!map.sprites[z][x]) {
-            map.sprites[z][x] = {}
-        }
-        if (!map.sprites[z][x][y]) {
-            map.sprites[z][x][y] = []
-        }
-
-        map.get.sprites(x, y, z).push(sprite);
-        sprite.x = x;
-        sprite.y = y;
-        sprite.z = z;
-    };
-
-    var hero = new Sprite("knight_s", 50, 50, 0, false, true, 10, map);
-    map.focus = hero;
-
-    var goblin = new Sprite("goblin", 58, 58, 0, false, true, 10, map);
-
-    map.passable = passable;
-    function passable(x, y, z) {
-        var tile_p = this.get.ground(x,y,z,"passable");
-        var sprites = this.get.sprites(x,y,z);
-        if (!tile_p) {
-            return false;
-        }
-        if (sprites) {
-            var p = true;
-            var i;
-            for (i = 0; i < sprites.length; i++) {
-                if (sprites[i]) {
-                    if (!sprites[i].passable) {
-                        p = false;
-                    }
-                }
-            }
-            if (!p) {
-                return false;
-            }
-        }
-        return true;
-    }
+    new Sprite("goblin", "", 58, 58, 0, false, true, 10, map);
 
     return map;
 };
@@ -310,7 +385,14 @@ var loadImages = function() {
         "goblin",
         "grass0",
         "grass1",
+        "knight_n",
         "knight_s",
+        "knight_e",
+        "knight_w",
+        "knight_n_attack",
+        "knight_s_attack",
+        "knight_e_attack",
+        "knight_w_attack",
         "tree0"
         ];
     var images = {}
@@ -338,11 +420,8 @@ var resize = function() {
     TILE_SIZE = Math.min(Math.ceil(Math.sqrt(w * h) / diameter / 16) * 16, 256);
     //TILE_SIZE = 64;
 
-    images = loadImages();
-};
+    image_list = loadImages();
 
-var handleMouseMove = function(event) {
-    
 };
 
 var main = function() {
@@ -360,38 +439,45 @@ var main = function() {
     then += delta;
 };
 
-var TILE_SIZE, images, map, canvas, context, keys_pressed, mouse, then, functions, methods, moving;
-
-TILE_SIZE = 64;
+var TILE_SIZE = 64;
+var FRAME_MS = 30;
+var imageList;
+var draw_list = [];
+var canvas, context;
+var inputs;
+var image_list, map, keys_pressed, mouse, then, functions, methods, moving;
 
 //setup canvas
 canvas = document.createElement("canvas");
 canvas.id = "canvas";
-context = canvas.getContext("2d");
 document.body.appendChild(canvas);
+context = canvas.getContext("2d");
 
 //setup input
+inputs = {
+    mouse: {},
+    keys_down: []
+};
 
 //keyboard
-keysPressed = {};
-addEventListener("keydown", function(e){ keysPressed[e.keyCode] = true; }, false);
-addEventListener("keyup", function(e){ delete keysPressed[e.keyCode]; }, false);
+addEventListener("keydown", function(e){ inputs.keys_down[e.keyCode] = true; }, false);
+addEventListener("keyup", function(e){ delete inputs.keys_down[e.keyCode]; }, false);
 
 //mouse
-mouse = {
+inputs.mouse = {
     down: false,
     x: 0,
     y: 0
 };
-addEventListener("mousedown", function(){ mouse.down = true; }, false);
-addEventListener("mouseup", function(){ mouse.down = false; }, false);
-addEventListener("mousemove", function(e){ mouse.x = e.clientX; mouse.y = e.clientY; }, false);
+addEventListener("mousedown", function(){ inputs.mouse.down = true; }, false);
+addEventListener("mouseup", function(){ inputs.mouse.down = false; }, false);
+addEventListener("mousemove", function(e){ inputs.mouse.x = e.clientX; inputs.mouse.y = e.clientY; }, false);
 addEventListener("touchstart", function(e){ 
     touches = e.changedTouches;
     if (touches !== undefined) {
         t = touches[0];
-        mouse.down = true; 
-        mouse.x = t.clientX; mouse.y = t.clientY;
+        inputs.mouse.down = true;
+        inputs.mouse.x = t.clientX; inputs.mouse.y = t.clientY;
         e.preventDefault();
     }
 }, false);
@@ -399,8 +485,8 @@ addEventListener("touchend", function(e){
     touches = e.changedTouches;
     if (touches !== undefined) {
         t = touches[0];
-        mouse.down = false; 
-        mouse.x = t.clientX; mouse.y = t.clientY;
+        inputs.mouse.down = false;
+        inputs.mouse.x = t.clientX; inputs.mouse.y = t.clientY;
         e.preventDefault();
     }
 }, false);
@@ -408,7 +494,7 @@ addEventListener("touchmove", function(e){
     touches = e.changedTouches;
     if (touches !== undefined) {
         t = touches[0];
-        mouse.x = t.clientX; mouse.y = t.clientY;
+        inputs.mouse.x = t.clientX; inputs.mouse.y = t.clientY;
         e.preventDefault();
     }
 }, false);
@@ -418,13 +504,13 @@ resize();
 $(window).on('resize', $.proxy(resize));
 
 map = generateMap();
-map.scale = 1;
+draw_list = [map];
 
 then = Date.now();
 
-setInterval(render, 30);
+setInterval(draw, 30);
 
 functions = [];
-methods = [[map.focus,"move"]];
+methods = [[map.focus,"act_on_input"]];
 moving = false;
 setInterval(main,1);
