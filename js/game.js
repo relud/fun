@@ -266,7 +266,7 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
             }
         } else if (inputs.keys_down[32]) {
             this.animations.push({
-                frames: 10,
+                frames: 5,
                 suffix: this.image_suffix + "_attack",
                 x: 0,
                 y: 0
