@@ -372,21 +372,30 @@ addEventListener("mousedown", function(){ mouse.down = true; }, false);
 addEventListener("mouseup", function(){ mouse.down = false; }, false);
 addEventListener("mousemove", function(e){ mouse.x = e.clientX; mouse.y = e.clientY; }, false);
 addEventListener("touchstart", function(e){ 
-    mouse.down = true; 
-    touch = e.changedTouches;
-    mouse.x = touch.clientX; mouse.y = touch.clientY;
-    e.preventDefault();
+    touches = e.changedTouches;
+    if (touches !== undefined) {
+        t = touches[0];
+        mouse.down = true; 
+        mouse.x = t.clientX; mouse.y = t.clientY;
+        e.preventDefault();
+    }
 }, false);
 addEventListener("touchend", function(e){
-    mouse.down = false;
-    touch = e.changedTouches.pop();
-    mouse.x = touch.clientX; mouse.y = touch.clientY;
-    e.preventDefault();
+    touches = e.changedTouches;
+    if (touches !== undefined) {
+        t = touches[0];
+        mouse.down = false; 
+        mouse.x = t.clientX; mouse.y = t.clientY;
+        e.preventDefault();
+    }
 }, false);
 addEventListener("touchmove", function(e){
-    touch = e.changedTouches;
-    mouse.x = touch.clientX; mouse.y = touch.clientY;
-    e.preventDefault();
+    touches = e.changedTouches;
+    if (touches !== undefined) {
+        t = touches[0];
+        mouse.x = t.clientX; mouse.y = t.clientY;
+        e.preventDefault();
+    }
 }, false);
 
 //be responsive to page size
