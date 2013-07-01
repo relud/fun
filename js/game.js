@@ -412,7 +412,7 @@ var resize = function() {
     canvas.width = w;
     canvas.height = h;
 
-    var render_distance = 12;
+    var render_distance = 5;
     var diameter = render_distance * 2 + 1;
 
     // 16 is the scaling step size for our images, and 256 is our largest scale
