@@ -212,6 +212,8 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
     this.map.relocate_sprite(this, this.x, this.y, this.z);
 
     this.attacked = function(attacker, direction) {
+        attacker.acting = true;
+        this.acting = true;
         var suffix = "";
         if (attacker.image_suffix !== "") {
             suffix = "_" + direction[direction.length - 1];
@@ -234,11 +236,9 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
         attacker.animations.push([attacker, "move_animation"]);
         methods.push([attacker, "animate"]);
 
-        console.log(this.health);
         var damage = 5;
         this.health -= damage;
 
-        console.log(this.health);
         this.flickers = 4;
         this.flicker_image = "";
         this.animations.push([this,"flicker"]);
@@ -364,6 +364,7 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
     this.flicker_next_image = "";
     this.flicker = function() {
         if (this.flickers > 0) {
+            this.acting = true;
             var next_image = this.flicker_next_image;
             this.time_passed -= FRAME_MS;
             this.flicker_next_image = this.image;
@@ -371,6 +372,7 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
             this.flickers -= 1;
         }
         if (!(this.flickers > 0)) {
+            this.acting = true;
             return false;
         }
         return true;
