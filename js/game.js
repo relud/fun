@@ -489,12 +489,12 @@ function generateMap() {
                 }
                 if ((0 <= p && p < 0.9) && !(x === 50 && y === 50)) {
                     p = Math.random();
-                    if (0 <= p && p < 0.01) {
-                        var slime = new Sprite("goblin", "", x, y, 0, false, true, 10, map);
+                    if (0 <= p && p < 0.005) {
+                        var slime = new Sprite("slime", "", x, y, 0, false, true, 5, map);
                         slime.interaction = [slime, "attacked"];
- /*                   } else if (0.01 <= p && p < 0.02) {
+                    } else if (0.005 <= p && p < 0.01) {
                         var goblin = new Sprite("goblin", "", x, y, 0, false, true, 10, map);
-                        goblin.interaction = [goblin, "attacked"]; */
+                        goblin.interaction = [goblin, "attacked"];
                     }
                 }
             }
