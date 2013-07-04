@@ -44,14 +44,19 @@ var Map = function() {
         }
     };
 
-    this.relocate_sprite = function(sprite, x, y, z) {
-        var oldSprites = this.get_sprites(sprite.x, sprite.y, sprite.z);
-        if (oldSprites) {
-            var index = oldSprites.indexOf(sprite);
+    this.remove_sprite = function(sprite) {
+        var sprites = this.get_sprites(sprite.x, sprite.y, sprite.z);
+        if (sprites) {
+            var index = sprites.indexOf(sprite);
             if (index !== -1) {
-                oldSprites.splice(index, 1);
+                sprites.splice(index, 1);
             }
         }
+    };
+
+    this.relocate_sprite = function(sprite, x, y, z) {
+        this.remove_sprite(sprite);
+
         if (!this.sprites) {
             this.sprites = []
         }
@@ -115,6 +120,8 @@ var Map = function() {
             y_max_tile += this.focus.y;
         }
 
+        // TODO: fix this so that sprites are drawn on the correct ground layer
+        // draw ground
         var l, i , j;
         for (l = 0; l < this.ground.length; l++) {
             for(i = x_min_tile; i < x_max_tile; i++) {
@@ -126,6 +133,8 @@ var Map = function() {
                 }
             }
         }
+
+        // draw sprites
         var l, i, j, k;
         for (l = 0; l < this.sprites.length; l++) {
             for(i = x_min_tile; i < x_max_tile; i++) {
@@ -179,6 +188,7 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
     this.health_max = health;
     this.image = image;
     this.image_suffix = "";
+    this.interaction = false;
     this.time_passed = 0;
     this.passable = false;
     this.x_offset = 0;
@@ -198,8 +208,47 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
     if (!otherMap) {
         this.map = map;
     }
-    
+
     this.map.relocate_sprite(this, this.x, this.y, this.z);
+
+    this.attacked = function(attacker, direction) {
+        var suffix = "";
+        if (attacker.image_suffix !== "") {
+            suffix = "_" + direction[direction.length - 1];
+        }
+
+        attacker.move_animations.push({
+            frames: 5,
+            suffix: suffix + "_attack",
+            x: 0,
+            y: 0
+        });
+
+        attacker.move_animations.push({
+            frames: 1,
+            suffix: suffix,
+            x: 0,
+            y: 0
+        });
+
+        attacker.animations.push([attacker, "move_animation"]);
+        methods.push([attacker, "animate"]);
+
+        console.log(this.health);
+        var damage = 5;
+        this.health -= damage;
+
+        console.log(this.health);
+        this.flickers = 4;
+        this.flicker_image = "";
+        this.animations.push([this,"flicker"]);
+        if (!(this.health > 0)) {
+            this.animations.push([this,"remove"]);
+        }
+        methods.push([this, "animate"]);
+
+        return true;
+    };
 
     this.act_on_input = function() {
         // only choose a new action when the last one is done
@@ -259,55 +308,48 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
         }
 
         if (direction){
+            // try to move
             if (map.passable(x,y,z)) {
                 this.move(direction,x,y,z);
-            } else {
-                this.move(direction,x,y,z,true);
+                return;
             }
+
+            // try to interact
+            if (map.get_sprites(x,y,z)) {
+                var sprites = map.get_sprites(x,y,z);
+                var i;
+                for (i = 0; i < sprites.length; i++) {
+                    s = sprites[i];
+                    if (s.interaction) {
+                        if (s.interaction[0][s.interaction[1]](this, direction)) {
+                            return
+                        }
+                    }
+                }
+            }
+
+            // fail
+            this.move(direction,x,y,z,true);
         } else if (inputs.keys_down[32]) {
-            this.animations.push({
-                frames: 5,
-                suffix: this.image_suffix + "_attack",
-                x: 0,
-                y: 0
-            });
-
-            this.animations.push({
-                frames: 1,
-                suffix: this.image_suffix,
-                x: 0,
-                y: 0
-            });
-
-            methods.push([this, "animate"]);
         }
     };
 
-    this.animate = function(delta, animations) {
-        if (Object.prototype.toString.call(animations) === "[object Array]") {
-            this.animations.concat(animations);
-        }
+    this.animate = function(delta) {
         if (this.animations.length > 0) {
-            this.acting = true;
             this.time_passed += delta;
 
             while (this.animations.length > 0 && this.time_passed > FRAME_MS) {
                 var a = this.animations[0];
-                while (a.frames > 0 && this.time_passed > FRAME_MS) {
-                    this.time_passed -= FRAME_MS;
-                    this.image_suffix = a.suffix;
-                    this.x_offset += a.x;
-                    this.y_offset += a.y;
-                    a.frames -= 1;
-                }
-                if (a.frames <= 0) {
+                if (a[0][a[1]]()) {
+                    continue;
+                } else {
                     this.animations.splice(0,1);
                 }
             }
         } else {
             console.log("animate called, but no animations available to execute");
         }
-        if (this.animations.length === 0) {
+        if (!(this.animations.length > 0)) {
             this.acting = false;
             this.time_passed = 0;
             for (i = 0; i < methods.length; i++) {
@@ -318,6 +360,44 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
         }
     };
 
+    this.flickers = 0;
+    this.flicker_next_image = "";
+    this.flicker = function() {
+        if (this.flickers > 0) {
+            var next_image = this.flicker_next_image;
+            this.time_passed -= FRAME_MS;
+            this.flicker_next_image = this.image;
+            this.image = next_image;
+            this.flickers -= 1;
+        }
+        if (!(this.flickers > 0)) {
+            return false;
+        }
+        return true;
+    };
+
+    this.move_animations = [];
+    this.move_animation = function() {
+        if (this.move_animations.length > 0) {
+            this.acting = true;
+
+            this.time_passed -= FRAME_MS;
+            this.image_suffix = this.move_animations[0].suffix;
+            this.x_offset += this.move_animations[0].x;
+            this.y_offset += this.move_animations[0].y;
+            this.move_animations[0].frames -= 1;
+
+            if (!(this.move_animations[0].frames > 0)) {
+                this.move_animations.splice(0,1);
+            }
+        }
+        if (!(this.move_animations.length > 0)) {
+            this.acting = false;
+            return false;
+        }
+        return true;
+    };
+
     this.move = function(direction, x, y, z, failed) {
         var suffix = "";
         if (this.image_suffix !== "") {
@@ -325,13 +405,13 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
         }
 
         if (failed) {
-            this.animations.push({
+            this.move_animations.push({
                 suffix: suffix,
                 frames: 2,
                 x: (x-this.x) * TILE_SIZE / 16,
                 y: (y-this.y) * TILE_SIZE / 16
             });
-            this.animations.push({
+            this.move_animations.push({
                 suffix: suffix,
                 frames: 2,
                 x: (this.x-x) * TILE_SIZE / 16,
@@ -344,7 +424,7 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
 
             var frames = 6;
 
-            this.animations.push({
+            this.move_animations.push({
                 suffix: suffix,
                 frames: frames,
                 x: 0 - (this.x_offset / frames),
@@ -352,23 +432,32 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
             });
         }
 
+        this.animations.push([this, "move_animation"]);
         methods.push([this, "animate"]);
     };
 
+    this.remove = function() {
+        this.map.remove_sprite(this);
+    };
+
     this.draw_relative = function(ctx, x_offset, y_offset) {
-        ctx.drawImage(
-            image_list[this.image + this.image_suffix],
-            parseInt(this.x*TILE_SIZE + this.x_offset + x_offset),
-            parseInt(this.y*TILE_SIZE + this.y_offset + y_offset)
-        );
+        if (this.image) {
+            ctx.drawImage(
+                image_list[this.image + this.image_suffix],
+                parseInt(this.x*TILE_SIZE + this.x_offset + x_offset),
+                parseInt(this.y*TILE_SIZE + this.y_offset + y_offset)
+            );
+        }
     };
 
     this.draw = function(ctx, x, y) {
-        ctx.drawImage(
-            image_list[this.image + this.image_suffix],
-            parseInt(x),
-            parseInt(y)
-        );
+        if (this.image) {
+            ctx.drawImage(
+                image_list[this.image + this.image_suffix],
+                parseInt(x),
+                parseInt(y)
+            );
+        }
     };
 }
 
@@ -391,20 +480,30 @@ function generateMap() {
                 map.ground[0][x][y] = new Tile("black", x, y, 0, false);
             } else {
                 var p = Math.random();
-                if (0 <= p && p < 0.8 ) {
+                if ((0 <= p && p < 0.8) || (x === 50 && y === 50)) {
                     map.ground[0][x][y] = new Tile("grass0", x, y, 0);
                 } else if (0.8 <= p && p < 0.9) {
                     map.ground[0][x][y] = new Tile("grass1", x, y, 0);
                 } else if (0.9 <= p && p <= 1) {
                     map.ground[0][x][y] = new Tile("tree0", x, y, 0, false);
                 }
+                if ((0 <= p && p < 0.9) && !(x === 50 && y === 50)) {
+                    p = Math.random();
+                    if (0 <= p && p < 0.01) {
+                        var slime = new Sprite("goblin", "", x, y, 0, false, true, 10, map);
+                        slime.interaction = [slime, "attacked"];
+ /*                   } else if (0.01 <= p && p < 0.02) {
+                        var goblin = new Sprite("goblin", "", x, y, 0, false, true, 10, map);
+                        goblin.interaction = [goblin, "attacked"]; */
+                    }
+                }
             }
         }
     }
 
-    map.focus = new Sprite("knight", "_s", 50, 50, 0, false, true, 10, map);
+    var knight = new Sprite("knight", "_s", 50, 50, 0, false, true, 10, map);
 
-    new Sprite("goblin", "", 58, 58, 0, false, true, 10, map);
+    map.focus = knight;
 
     return map;
 };
@@ -423,6 +522,7 @@ var loadImages = function() {
         "knight_s_attack",
         "knight_e_attack",
         "knight_w_attack",
+        "slime",
         "tree0"
         ];
     var images = {}
