@@ -212,6 +212,7 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
     this.map.relocate_sprite(this, this.x, this.y, this.z);
 
     this.attacked = function(attacker, direction) {
+        if (attacker.acting) { return }
         attacker.acting = true;
         this.acting = true;
         var suffix = "";
@@ -220,7 +221,7 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
         }
 
         attacker.move_animations.push({
-            frames: 5,
+            frames: 3,
             suffix: suffix + "_attack",
             x: 0,
             y: 0
@@ -330,7 +331,6 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
 
             // fail
             this.move(direction,x,y,z,true);
-        } else if (inputs.keys_down[32]) {
         }
     };
 
@@ -409,13 +409,13 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
         if (failed) {
             this.move_animations.push({
                 suffix: suffix,
-                frames: 2,
+                frames: 1,
                 x: (x-this.x) * TILE_SIZE / 16,
                 y: (y-this.y) * TILE_SIZE / 16
             });
             this.move_animations.push({
                 suffix: suffix,
-                frames: 2,
+                frames: 1,
                 x: (this.x-x) * TILE_SIZE / 16,
                 y: (this.y-y) * TILE_SIZE / 16
             });
@@ -424,7 +424,7 @@ var Sprite = function(image, image_suffix, x, y, z, passable, has_health, health
             this.y_offset -= (y - this.y)*TILE_SIZE;
             map.relocate_sprite(this, x, y, z);
 
-            var frames = 6;
+            var frames = 4;
 
             this.move_animations.push({
                 suffix: suffix,
@@ -572,7 +572,7 @@ var main = function() {
 };
 
 var TILE_SIZE = 64;
-var FRAME_MS = 30;
+var FRAME_MS = 60;
 var imageList;
 var draw_list = [];
 var canvas, context;
